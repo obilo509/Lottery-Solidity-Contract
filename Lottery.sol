@@ -6,56 +6,64 @@ contract Lottery {
         IDLE,
         BETTING
     }
-
     address[] public players;
     State public currentState = State.IDLE;
     uint public betCount;
     uint public betSize;
-    uint public houseeFee;
-    address admin;
-
+    uint public houseFee;
+    address public admin;
+    
     constructor(uint fee) public {
-        require(fee > 1 && fee < 99, "fee should be between 1 and 99");
+        require(fee > 1 && fee < 99, 'fee should be between 1 and 99');
         admin = msg.sender;
-        houseeFee = fee;
+        houseFee = fee;
     }
-
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "only admin");
-        _;
-    }
-
-    modifier inState(State state)   {
-        require(state == currentState, "current state does not allow this");
-        _;
-    }
-
-    function createBet(uint count, uint size) external onlyAdmin() inState(State.IDLE){
+    
+    function createBet(uint count, uint size) 
+        external 
+        inState(State.IDLE) 
+        onlyAdmin() {
         betCount = count;
         betSize = size;
         currentState = State.BETTING;
     }
-
-    function bet() external payable inState(State.BETTING) {
-        require(msg.value == betSize, "can only bet exactly the bet size");
+    
+    function bet() 
+        external 
+        payable 
+        inState(State.BETTING) {
+        require(msg.value == betSize, 'can only bet exactly the bet size');
         players.push(msg.sender);
-        if(players.length == betCount) {
-            uint winner = _randomModule(betCount);
-            payable(players[winner]).transfer((betSize * betCount) * (100 - houseeFee) / 100);
+        if(players.length == betCount ) {
+            uint winner = _randomModulo(betCount);
+            payable(players[winner]).transfer((betSize * betCount) * (100 - houseFee) / 100);
             currentState = State.IDLE;
             delete players;
         }
     }
-
-    function _randomModule(uint modulo) view internal returns(uint) {
-        return uint(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % modulo;
-    }
-
-    function cancel() external inState(State.BETTING) onlyAdmin() {
+    
+    function cancel() 
+        external 
+        inState(State.BETTING) 
+        onlyAdmin() {
         for(uint i = 0; i < players.length; i++) {
-            payable(players[i]).transfer(betSize);
+           payable(players[i]).transfer(betSize);
         }
         delete players;
         currentState = State.IDLE;
+    }
+    
+    function _randomModulo(uint modulo) view internal returns(uint) {
+        return uint(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % modulo;
+    }
+    
+    modifier inState(State state) {
+        require(state == currentState, 'current state does not allow this');
+        _;
+    }
+    
+    modifier onlyAdmin() {
+        require(msg.sender == admin, 'only admin');
+        _;
     }
 }
